@@ -1,13 +1,43 @@
 AuditsAttributes
 ================
 
-Introduction goes here.
+A simple plugin that allows to you create an audit record any time an ActiveRecord attribute is initialized or changed.  You can specify messages for each auditable event, and you can include placeholders like {initial_value} and {changed_value} in those messages to show how the value changed.
 
 
 Example
 =======
 
-Example goes here.
+The table that stores the audits can have any name, but must have at least the following columns:
 
+  ## from schema.rb
+  create_table :audits, :force => true do |t|
+    t.integer :audited_record_id
+    t.text :description
+    t.string :initial_value, :changed_value
+    t.integer :changed_by    ## application-dependent, needs to be changed
+  end
 
-Copyright (c) 2010 [name of plugin creator], released under the MIT license
+The ActiveRecord model that is being audited needs the following:
+
+  class Thing < ActiveRecord::Base
+    include AuditsAttributes
+
+    has_many :audits
+    audits_attributes :through => :audits
+
+    attr_auditable :some_attribute, :message => {
+      :initial => "Some attribute initialized to {initial_value}",
+      :changed => "Some attribute changed from {initial_value} to {changed_value}" }
+    attr_auditable :some_other_attribute, :message => "Attribute changed."
+  end
+
+Steps:
+  - The AuditsAttribute module is included.  
+
+  - A has_many association is created to the model that stores the audits.  This association and model can have any name.
+
+  - The next line declares that this model audits attributes and specifies the has_many association "through" which those attributes are audited.
+
+  - Individual attributes are declared as auditable.  If a string is supplied for the :message, the same message is used for initialization AND changes of an attribute.  If a hash with :initial and :changed keys is supplies for the :message, the corresponding messages are used.  The plugin will replace the {initial_value} and {changed_value} placeholders with the appropriate values when creating the audit record.
+
+Copyright (c) 2010 Derek Croft, released under the MIT license
