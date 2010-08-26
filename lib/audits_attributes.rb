@@ -16,6 +16,35 @@ module AuditsAttributes
   end
 
   module ClassMethods
+    def audits_attributes(hash)
+      raise ArgumentError, 'audits_attributes must have a :through parameter.' unless hash.include? :through 
+
+      self.audit_through = hash[:through]
+      self.quick_audit_model = hash[:quick_audit_model]
+
+      raise ArgumentError, "audits_attributes :through parameter must point to a valid association." unless self.reflect_on_association(hash[:through])
+
+      send :include, InstanceMethods
+    end
+
+    def attr_auditable(*attr)
+      hashes, attrs = attr.partition { |a| a.is_a? Hash }
+      raise ArgumentError, "attr_auditable has to have a :message parameter" if hashes.empty? or !hashes.first.include? :message
+
+      invalid_attrs = attrs.find_all do |a| 
+        !self.columns_hash[a.to_s]
+      end
+      raise ArgumentError, "invalid attributes passed to attr_auditable: #{invalid_attrs.join(",")}" unless invalid_attrs.empty?
+
+      attrs.each do |a|
+        self.auditable_attributes[a] = hashes.first
+      end
+    end
+
+    ## class-level attributes
+    ## TODO:  cattr_accessor didn't work for these for whatever reason
+    ##        get cattr_accessor working because this section of code
+    ##        is muy fugly and Java-esque
     def auditable_attributes
       @@auditable_attributes ||= {} 
       @@auditable_attributes
@@ -41,30 +70,6 @@ module AuditsAttributes
       @@quick_audit_model = val
     end
 
-    def audits_attributes(hash)
-      raise ArgumentError, 'audits_attributes must have a :through parameter.' unless hash.include? :through 
-
-      self.audit_through = hash[:through]
-      self.quick_audit_model = hash[:quick_audit_model]
-
-      raise ArgumentError, "audits_attributes :through parameter must point to a valid association." unless self.reflect_on_association(hash[:through])
-
-      send :include, InstanceMethods
-    end
-
-    def attr_auditable(*attr)
-      hashes, attrs = attr.partition { |a| a.is_a? Hash }
-      raise ArgumentError, "attr_auditable has to have a :message parameter" if hashes.empty? or !hashes.first.include? :message
-
-      invalid_attrs = attrs.find_all do |a| 
-        !self.columns_hash[a.to_s]
-      end
-      raise ArgumentError, "invalid attributes passed to attr_auditable: #{invalid_attrs.join(",")}" unless invalid_attrs.empty?
-
-      attrs.each do |a|
-        self.auditable_attributes[a] = hashes.first
-      end
-    end
 
   end
 
