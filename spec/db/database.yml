@@ -1,0 +1,3 @@
+sqlite3:
+  :adapter: sqlite3
+  :database: vendor/plugins/audits_attributes/spec/db/audits_attributes.sqlite3.db
